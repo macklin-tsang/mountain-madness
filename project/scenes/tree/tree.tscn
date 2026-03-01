@@ -1,0 +1,16 @@
+[gd_scene format=3 uid="uid://4j7ci7ry6n2d"]
+
+[ext_resource type="Texture2D" uid="uid://bm337nbmh742m" path="res://assets/foliagePack_005.png" id="1_negce"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_8i00b"]
+radius = 6.0827627
+
+[node name="tree" type="StaticBody2D" unique_id=715253956]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=809586937]
+shape = SubResource("CircleShape2D_8i00b")
+
+[node name="FoliagePack005" type="Sprite2D" parent="." unique_id=95567719]
+position = Vector2(0, -37.000008)
+scale = Vector2(0.372549, 0.37254894)
+texture = ExtResource("1_negce")
