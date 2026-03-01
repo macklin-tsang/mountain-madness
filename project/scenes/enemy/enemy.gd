@@ -5,7 +5,8 @@ signal enemy_died(reward: int)
 
 @export var max_hp: int = 30
 @export var speed: float = 40.0
-@export var contact_damage: int = 10
+## Damage as a fraction of the player's max HP (0.20 = 20 % per hit).
+@export var damage_fraction: float = 0.20
 @export var contact_range: float = 18.0
 @export var damage_cooldown: float = 1.0
 @export var currency_reward: int = 10
@@ -80,7 +81,7 @@ func _physics_process(delta: float) -> void:
 	if _damage_timer > 0.0:
 		_damage_timer -= delta
 	elif global_position.distance_to(_player.global_position) < contact_range:
-		GameState.take_damage(contact_damage)
+		GameState.take_damage(max(1, int(GameState.max_hp * damage_fraction)))
 		_damage_timer = damage_cooldown
 		if not _is_hurt and not _dead:
 			_is_attacking = true

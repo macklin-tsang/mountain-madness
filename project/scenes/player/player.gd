@@ -1,16 +1,22 @@
 extends CharacterBody2D
-## Player — keyboard movement + spacebar auto-lock attack, with full sprite animation.
+## Player — WASD movement, auto-aim fire arrow projectiles on Space.
+## No weapon held; projectiles are spawned toward the nearest enemy.
 
-@export var move_speed: float = 60.0
-@export var attack_range: float = 80.0
-@export var attack_damage: int = 30
-@export var attack_cooldown: float = 0.5
+@export var move_speed: float = 120.0
 
-var _attack_ready: bool = true
+## Cooldown between shots in seconds. Kept very low for demonstration.
+@export var attack_cooldown: float = 0.05
+
+## Damage dealt per projectile.
+@export var attack_damage: int = 15
+
 var _attack_timer: float = 0.0
+var _last_move_dir: Vector2 = Vector2.UP  # fallback fire direction
 var _is_attacking: bool = false
 var _is_hurt: bool = false
 var _last_hp: int = 100
+
+var _projectile_scene: PackedScene = preload("res://scenes/projectile/projectile.tscn")
 
 @onready var _anim: AnimatedSprite2D = $AnimatedSprite2D
 
@@ -22,28 +28,23 @@ func _ready() -> void:
 	GameState.hp_changed.connect(_on_hp_changed)
 	GameState.player_died.connect(_on_player_died)
 	_play("idle")
+	queue_redraw()
 
 
 # ---------------------------------------------------------------------------
-# Build SpriteFrames from the copied assets at runtime.
-# All frames live under res://assets/player/ so they work in exported builds.
+# SpriteFrames — Wraith_01 animations.
 # ---------------------------------------------------------------------------
 
 func _build_sprite_frames() -> void:
 	var sf := SpriteFrames.new()
-
-	_add_anim(sf, "idle",   "idle",      "Idle",           12,  8.0,  true)
-	_add_anim(sf, "walk",   "walking",   "Moving Forward", 12, 12.0,  true)
-	_add_anim(sf, "attack", "attacking", "Attack",         12, 15.0,  false)
-	_add_anim(sf, "hurt",   "hurt",      "Hurt",           12, 10.0,  false)
-	_add_anim(sf, "die",    "dying",     "Dying",          15, 10.0,  false)
-
+	_add_anim(sf, "idle",   "idle",      "Idle",           12,  8.0, true)
+	_add_anim(sf, "walk",   "walking",   "Moving Forward", 12, 12.0, true)
+	_add_anim(sf, "attack", "attacking", "Attack",         12, 15.0, false)
+	_add_anim(sf, "hurt",   "hurt",      "Hurt",           12, 10.0, false)
+	_add_anim(sf, "die",    "dying",     "Dying",          15, 10.0, false)
 	_anim.sprite_frames = sf
 
 
-## folder   — subfolder name under res://assets/player/
-## prefix   — the part of the filename between "Wraith_01_" and "_NNN.png"
-## count    — total frame count
 func _add_anim(sf: SpriteFrames, anim: String, folder: String,
 		prefix: String, count: int, fps: float, loop: bool) -> void:
 	sf.add_animation(anim)
@@ -55,14 +56,14 @@ func _add_anim(sf: SpriteFrames, anim: String, folder: String,
 
 
 # ---------------------------------------------------------------------------
-# Physics / input
+# Physics — movement + continuous fire while Space is held
 # ---------------------------------------------------------------------------
 
 func _physics_process(delta: float) -> void:
 	if not GameState.game_started:
 		return
 	_handle_movement()
-	_tick_attack_cooldown(delta)
+	_handle_attack(delta)
 
 
 func _handle_movement() -> void:
@@ -74,42 +75,43 @@ func _handle_movement() -> void:
 	velocity = dir.normalized() * move_speed
 	move_and_slide()
 
-	# Flip sprite to face the direction of horizontal movement
-	if dir.x != 0:
+	if dir != Vector2.ZERO:
+		_last_move_dir = dir.normalized()
 		_anim.flip_h = dir.x < 0
 
-	# Update walk / idle animation only when not in a one-shot state
-	if not _is_attacking and not _is_hurt:
+	if not _is_hurt and not _is_attacking:
 		_play("walk" if dir != Vector2.ZERO else "idle")
 
 
-func _tick_attack_cooldown(delta: float) -> void:
-	if not _attack_ready:
-		_attack_timer -= delta
-		if _attack_timer <= 0.0:
-			_attack_ready = true
-
-
-func _input(event: InputEvent) -> void:
-	if not GameState.game_started:
-		return
-	if event.is_action_pressed("attack") and _attack_ready:
-		_perform_attack()
+func _handle_attack(delta: float) -> void:
+	_attack_timer -= delta
+	if _attack_timer <= 0.0 and Input.is_action_pressed("attack"):
+		_fire()
+		_attack_timer = attack_cooldown
 
 
 # ---------------------------------------------------------------------------
-# Attack logic
+# Fire a projectile aimed at the nearest enemy (or last move direction).
 # ---------------------------------------------------------------------------
 
-func _perform_attack() -> void:
-	_attack_ready = false
-	_attack_timer = attack_cooldown
-	_is_attacking = true
-	_play("attack")
+func _fire() -> void:
+	var direction := _aim_direction()
+	var proj: Area2D = _projectile_scene.instantiate()
+	proj.global_position = global_position
+	proj.direction = direction
+	proj.damage = attack_damage
+	# Spawn as sibling so projectiles don't move with the player
+	get_parent().add_child(proj)
+	# Play attack animation once per burst; let it finish before resetting
+	if not _is_attacking:
+		_is_attacking = true
+		_anim.play("attack")
 
+
+func _aim_direction() -> Vector2:
 	var enemies := get_tree().get_nodes_in_group("enemies")
 	if enemies.is_empty():
-		return
+		return _last_move_dir
 
 	var nearest: Node2D = null
 	var nearest_dist := INF
@@ -119,8 +121,7 @@ func _perform_attack() -> void:
 			nearest_dist = d
 			nearest = e
 
-	if nearest and nearest_dist <= attack_range:
-		nearest.take_damage(attack_damage)
+	return (nearest.global_position - global_position).normalized()
 
 
 # ---------------------------------------------------------------------------
@@ -133,9 +134,8 @@ func _play(anim: String) -> void:
 
 
 func _on_animation_finished() -> void:
-	_is_attacking = false
 	_is_hurt = false
-	# Return to idle; the next _physics_process will switch to walk if moving
+	_is_attacking = false
 	_play("idle")
 
 
@@ -144,9 +144,30 @@ func _on_hp_changed(new_hp: int) -> void:
 		_is_hurt = true
 		_play("hurt")
 	_last_hp = new_hp
+	queue_redraw()
+
+
+# ---------------------------------------------------------------------------
+# Floating health bar drawn in world space above the character.
+# ---------------------------------------------------------------------------
+
+func _draw() -> void:
+	var bar_w := 30.0
+	var bar_h := 3.0
+	# Position bar above the sprite top (sprite is ~42 px tall, centered).
+	var bar_x := -bar_w * 0.5
+	var bar_y := -26.0
+	var hp_ratio := clampf(float(GameState.player_hp) / float(GameState.max_hp), 0.0, 1.0)
+
+	# Dark background
+	draw_rect(Rect2(bar_x, bar_y, bar_w, bar_h), Color(0.15, 0.15, 0.15))
+	# Coloured fill: green when full, red when empty
+	if hp_ratio > 0.0:
+		var fill_color := Color(1.0 - hp_ratio, hp_ratio, 0.0)
+		draw_rect(Rect2(bar_x, bar_y, bar_w * hp_ratio, bar_h), fill_color)
 
 
 func _on_player_died() -> void:
-	_is_attacking = false
 	_is_hurt = false
+	_is_attacking = false
 	_play("die")

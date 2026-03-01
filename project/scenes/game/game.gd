@@ -1,15 +1,13 @@
 extends Node2D
 ## Game — root scene. Manages waves, HUD, and the ESC pause/menu overlay.
 ##
-## Sprite & background customization
-## ----------------------------------
-## • background_color  — change the default forest-green fill colour.
-## • background_texture — drag a Texture2D here to replace the solid colour with
-##                        an image (scaled to fill the 320×180 viewport).
-## • Player sprite     — open scenes/player/player.tscn, select Player, and set
-##                        the "Sprite Texture" export on the Player script.
-## • Enemy sprite      — open scenes/enemy/enemy.tscn, select Enemy, and set
-##                        the "Sprite Texture" export on the Enemy script.
+## Customization guide
+## -------------------
+## • Background color   — change background_color export on this node (default: white).
+## • Background image   — set background_texture export; scales to fill the 320×200 viewport.
+## • Player sprites     — replace PNGs inside project/assets/player/ (keep filenames identical).
+## • Enemy sprites      — replace PNGs inside project/assets/enemy/ (keep filenames identical).
+## • Projectile sprites — replace PNGs inside project/assets/projectile/fire_arrow/.
 
 @export var background_color: Color = Color.WHITE
 @export var background_texture: Texture2D
@@ -40,7 +38,6 @@ func _ready() -> void:
 	GameState.currency_changed.connect(func(v): _currency_label.text = "Gold: %d" % v)
 	GameState.player_died.connect(_on_player_died)
 
-	# Show the initial start screen
 	_show_menu("", "New Game")
 
 
@@ -57,13 +54,12 @@ func _input(event: InputEvent) -> void:
 # ---------------------------------------------------------------------------
 
 func _start_new_game() -> void:
-	# Clear leftover enemies from a previous run
 	for child in $Enemies.get_children():
 		child.queue_free()
 
 	GameState.reset()
 	GameState.game_started = true
-	$Player.position = Vector2(160, 90)
+	$Player.position = Vector2(160, 100)
 	$Player.modulate = Color.WHITE
 	_enemies_alive = 0
 	_resume()
@@ -145,8 +141,8 @@ func _resume() -> void:
 
 
 # ---------------------------------------------------------------------------
-# Node setup (background, HUD, pause menu all built via code so .tscn stays
-# minimal and the pixel artist only needs to touch export variables)
+# Node setup — background, HUD, and pause menu are built in code so the
+# .tscn stays minimal and artists only need to swap assets or export vars.
 # ---------------------------------------------------------------------------
 
 func _setup_background() -> void:
@@ -178,16 +174,19 @@ func _setup_hud() -> void:
 	_hp_label = Label.new()
 	_hp_label.position = Vector2(2, 2)
 	_hp_label.text = "HP: 100"
+	_hp_label.add_theme_color_override("font_color", Color.BLACK)
 	layer.add_child(_hp_label)
 
 	_wave_label = Label.new()
 	_wave_label.position = Vector2(128, 2)
 	_wave_label.text = "Wave 0"
+	_wave_label.add_theme_color_override("font_color", Color.BLACK)
 	layer.add_child(_wave_label)
 
 	_currency_label = Label.new()
 	_currency_label.position = Vector2(248, 2)
 	_currency_label.text = "Gold: 0"
+	_currency_label.add_theme_color_override("font_color", Color.BLACK)
 	layer.add_child(_currency_label)
 
 
@@ -233,7 +232,6 @@ func _setup_pause_menu() -> void:
 	quit_btn.pressed.connect(get_tree().quit)
 	vbox.add_child(quit_btn)
 
-	# Wire up focus so arrow keys cycle between the two buttons
 	_start_btn.focus_neighbor_bottom = _start_btn.get_path_to(quit_btn)
 	_start_btn.focus_neighbor_top    = _start_btn.get_path_to(quit_btn)
 	quit_btn.focus_neighbor_top      = quit_btn.get_path_to(_start_btn)
