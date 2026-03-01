@@ -1,5 +1,5 @@
 extends Area2D
-## Projectile — fire arrow that travels toward a target direction.
+## Projectile — fire arrow with a glowing laser trail effect.
 ## SpriteFrames are cached statically so they are only loaded once
 ## regardless of how many projectiles are on screen simultaneously.
 
@@ -33,6 +33,34 @@ func _process(delta: float) -> void:
 	_timer += delta
 	if _timer >= lifetime:
 		queue_free()
+		return
+	queue_redraw()
+
+
+# ---------------------------------------------------------------------------
+# Glow effect — drawn in Area2D local space, behind AnimatedSprite2D child.
+# Local X axis runs along the arrow shaft; -X = tip (direction of travel).
+# Antialiased lines produce smooth rounded-cap beams with no hard edges.
+# ---------------------------------------------------------------------------
+
+func _draw() -> void:
+	var pulse := 0.80 + 0.20 * sin(_timer * 22.0)
+	var tip  := Vector2(-9.0, 0.0)
+	var tail := Vector2( 9.0, 0.0)
+
+	# Wide outer glow
+	draw_line(tip, tail, Color(1.00, 0.28, 0.00, 0.18 * pulse), 9.0, true)
+	# Mid bloom
+	draw_line(tip, tail, Color(1.00, 0.58, 0.08, 0.35 * pulse), 5.0, true)
+	# Inner bright band
+	draw_line(tip, tail, Color(1.00, 0.85, 0.32, 0.65 * pulse), 2.5, true)
+	# Hot white core
+	draw_line(tip, tail, Color(1.00, 0.98, 0.80, 1.00),          0.8, true)
+
+	# Tip flare
+	draw_circle(tip, 3.5, Color(1.00, 0.68, 0.12, 0.30 * pulse))
+	draw_circle(tip, 1.8, Color(1.00, 0.95, 0.55, 0.70 * pulse))
+	draw_circle(tip, 0.9, Color(1.00, 1.00, 1.00, 1.00))
 
 
 func _on_body_entered(body: Node2D) -> void:
