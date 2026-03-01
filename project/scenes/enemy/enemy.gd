@@ -7,7 +7,7 @@ signal enemy_died(reward: int)
 @export var speed: float = 40.0
 ## Damage as a fraction of the player's max HP (0.20 = 20 % per hit).
 @export var damage_fraction: float = 0.20
-@export var contact_range: float = 18.0
+@export var contact_range: float = 24.0
 @export var damage_cooldown: float = 1.0
 @export var currency_reward: int = 10
 
@@ -19,6 +19,8 @@ var _is_hurt: bool = false
 var _is_attacking: bool = false
 
 @onready var _anim: AnimatedSprite2D = $AnimatedSprite2D
+
+const _DamageNumber = preload("res://scenes/effects/damage_number.gd")
 
 
 func _ready() -> void:
@@ -98,6 +100,18 @@ func take_damage(amount: int) -> void:
 	_hp -= amount
 	_is_hurt = true
 	_play("hurt")
+
+	# Spawn floating damage number
+	var num := _DamageNumber.new()
+	num.init(amount, Color(1.0, 0.75, 0.15))
+	num.global_position = global_position + Vector2(randf_range(-4.0, 4.0), -12.0)
+	get_parent().add_child(num)
+
+	# White hit flash
+	var tw := create_tween()
+	tw.tween_property(_anim, "modulate", Color(2.5, 2.5, 2.5, 1.0), 0.04)
+	tw.tween_property(_anim, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.10)
+
 	if _hp <= 0:
 		_die()
 
@@ -108,12 +122,15 @@ func _die() -> void:
 	set_physics_process(false)
 	enemy_died.emit(currency_reward)
 	_play("die")
-	# queue_free is triggered by animation_finished for the "die" animation
 
 
 func _on_animation_finished() -> void:
 	if _dead:
-		queue_free()
+		# Death glow: warm orange bloom then fade out
+		var tw := create_tween()
+		tw.tween_property(_anim, "modulate", Color(2.8, 1.8, 0.4, 1.0), 0.12)
+		tw.tween_property(_anim, "modulate", Color(1.5, 0.8, 0.2, 0.0), 0.28)
+		tw.tween_callback(queue_free)
 		return
 	_is_hurt = false
 	_is_attacking = false

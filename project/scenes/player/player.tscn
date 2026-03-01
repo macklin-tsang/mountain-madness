@@ -1,17 +1,16 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene format=3 uid="uid://v6plmm56heqd"]
 
-[ext_resource type="Script" path="res://scenes/player/player.gd" id="1"]
+[ext_resource type="Script" uid="uid://mfoptga8hwpa" path="res://scenes/player/player.gd" id="1"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_1"]
 size = Vector2(18, 36)
 
-[node name="Player" type="CharacterBody2D"]
-collision_layer = 1
+[node name="Player" type="CharacterBody2D" unique_id=1510488642]
 collision_mask = 2
 script = ExtResource("1")
 
-[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=1946755545]
 scale = Vector2(0.1, 0.1)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1387201349]
 shape = SubResource("RectangleShape2D_1")

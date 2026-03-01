@@ -2,13 +2,17 @@ extends CharacterBody2D
 ## Player — WASD movement, auto-aim fire arrow projectiles on Space.
 ## No weapon held; projectiles are spawned toward the nearest enemy.
 
-@export var move_speed: float = 120.0
+@export var move_speed: float = 80.0
 
-## Cooldown between shots in seconds. Kept very low for demonstration.
-@export var attack_cooldown: float = 0.05
+## Cooldown between shots in seconds.
+@export var attack_cooldown: float = 0.35
 
 ## Damage dealt per projectile.
-@export var attack_damage: int = 15
+@export var attack_damage: int = 10
+
+## World size limits (must match game.gd constants).
+const WORLD_W: float = 1280.0
+const WORLD_H: float = 800.0
 
 var _attack_timer: float = 0.0
 var _last_move_dir: Vector2 = Vector2.UP  # fallback fire direction
@@ -29,6 +33,17 @@ func _ready() -> void:
 	GameState.player_died.connect(_on_player_died)
 	_play("idle")
 	queue_redraw()
+
+	# Camera — follows the player with smooth lag, bounded to world size.
+	var cam := Camera2D.new()
+	cam.position_smoothing_enabled = true
+	cam.position_smoothing_speed = 6.0
+	cam.limit_left   = 0
+	cam.limit_top    = 0
+	cam.limit_right  = int(WORLD_W)
+	cam.limit_bottom = int(WORLD_H)
+	add_child(cam)
+	cam.make_current()
 
 
 # ---------------------------------------------------------------------------
@@ -74,6 +89,10 @@ func _handle_movement() -> void:
 	if Input.is_action_pressed("move_right"): dir.x += 1
 	velocity = dir.normalized() * move_speed
 	move_and_slide()
+
+	# Clamp to world bounds
+	position.x = clampf(position.x, 0.0, WORLD_W)
+	position.y = clampf(position.y, 0.0, WORLD_H)
 
 	if dir != Vector2.ZERO:
 		_last_move_dir = dir.normalized()
