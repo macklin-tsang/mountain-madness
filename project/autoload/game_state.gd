@@ -19,6 +19,8 @@ func reset() -> void:
 	player_hp = 100
 	max_hp = 100
 	game_started = false
+	# Emit so all health-bar listeners (HUD + player world-bar) redraw to full.
+	hp_changed.emit(player_hp)
 
 
 func take_damage(amount: int) -> void:

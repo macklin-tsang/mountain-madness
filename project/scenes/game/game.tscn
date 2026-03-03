@@ -46,8 +46,8 @@ script = ExtResource("1")
 [node name="Enemies" type="Node2D" parent="." unique_id=1312495705]
 z_index = 1
 
-[node name="Player" parent="." unique_id=1097204420 instance=ExtResource("2")]
-position = Vector2(160, 100)
+[node name="Player" parent="." instance=ExtResource("2")]
+position = Vector2(640, 400)
 
 [node name="tree" parent="." unique_id=715253956 instance=ExtResource("3_0sr1o")]
 position = Vector2(18, 49)
